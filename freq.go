@@ -1,5 +1,7 @@
 package main
 
+import "strings"
+
 type freqTable struct {
 	FreqDist map[string]int
 	Total    int
@@ -13,7 +15,7 @@ func NewFreqTable() *freqTable {
 	}
 }
 
-func (f *freqTable) score(wordlist []string) {
+func (f *freqTable) score(wordlist []string, filter *Filter) {
 	distCount := make(map[rune]int)
 	totalChar := 0
 	// First do a letter count
@@ -27,16 +29,47 @@ func (f *freqTable) score(wordlist []string) {
 			}
 		}
 	}
+	green := string(filter.green[:])
+	yellow := filter.yellowString()
 	// Then generate word frequency score
 	for _, w := range wordlist {
 		fScore := 0
+		seen := ""
 		for _, c := range w {
-			fScore += distCount[c]
+			// Green and Yellow are allowed to repeat, otherwise not. Grey should already have been filtered
+			if strings.ContainsRune(yellow, c) || strings.ContainsRune(string(green), c) || !strings.ContainsRune(seen, c) {
+				fScore += distCount[c]
+				seen = seen + string(c)
+			} else {
+				fScore = 0
+				break
+			}
 		}
 		f.FreqDist[w] = fScore
 	}
 	f.Total = totalChar
-	return
+}
+
+type kv struct {
+	key   string
+	value int
+}
+
+func (f *freqTable) sorted() []kv {
+	// Basic insertion sort, fix if this is too expensive
+	sorted := make([]kv, 0, len(f.FreqDist))
+	sorted = append(sorted, kv{"", -1})
+	for k, v := range f.FreqDist {
+		for i, e := range sorted {
+			if v > e.value {
+				rear := append([]kv{}, sorted[i:]...)
+				sorted = append(sorted[0:i], kv{k, v})
+				sorted = append(sorted, rear...)
+				break
+			}
+		}
+	}
+	return sorted
 }
 
 func (f *freqTable) findTopScore() string {
