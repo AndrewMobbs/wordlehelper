@@ -52,8 +52,13 @@ func (f *Filter) processRound(r string) error {
 			}
 			f.green[i] = rs[i]
 		case 'x':
-			if !(strings.ContainsRune(string(f.green[:]), rs[i]) || strings.ContainsRune(f.yellowString(), rs[i])) {
-				f.grey += string(rs[i])
+			if strings.ContainsRune(string(f.green[:]), rs[i]) {
+				// If this is a known green letter marked grey then its not allowed in this position, so treat it as yellow
+				f.yellow[len(f.yellow)-1][i] = rs[i]
+			} else {
+				if !strings.ContainsRune(f.yellowString(), rs[i]) {
+					f.grey += string(rs[i])
+				}
 			}
 		default:
 			return fmt.Errorf("invalid round result input %s", string(v))

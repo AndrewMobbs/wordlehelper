@@ -71,15 +71,3 @@ func (f *freqTable) sorted() []kv {
 	}
 	return sorted
 }
-
-func (f *freqTable) findTopScore() string {
-	max := 0
-	wordChoice := ""
-	for w, v := range f.FreqDist {
-		if v > max {
-			max = v
-			wordChoice = w
-		}
-	}
-	return wordChoice
-}
