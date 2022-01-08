@@ -1,6 +1,8 @@
 package main
 
-import "strings"
+import (
+	"strings"
+)
 
 type freqTable struct {
 	FreqDist map[string]int
@@ -35,17 +37,27 @@ func (f *freqTable) score(wordlist []string, filter *Filter) {
 	for _, w := range wordlist {
 		fScore := 0
 		seen := ""
+		hasRepeat := false
 		for _, c := range w {
-			// Green and Yellow are allowed to repeat, otherwise not. Grey should already have been filtered
-			if strings.ContainsRune(yellow, c) || strings.ContainsRune(string(green), c) || !strings.ContainsRune(seen, c) {
-				fScore += distCount[c]
-				seen = seen + string(c)
+			if strings.ContainsRune(seen, c) {
+				hasRepeat = true
+				// Green and Yellow are allowed to repeat, otherwise not. Grey should already have been filtered
+				if strings.ContainsRune(yellow, c) || strings.ContainsRune(string(green), c) {
+					fScore += distCount[c]
+				} else {
+					fScore = 0
+					break
+				}
 			} else {
-				fScore = 0
-				break
+				fScore += distCount[c]
 			}
+			seen = seen + string(c)
 		}
 		f.FreqDist[w] = fScore
+		// Hack to strongly prefer no-repeat words over words with repeats
+		if !hasRepeat && fScore > 0 {
+			f.FreqDist[w] += totalChar
+		}
 	}
 	f.Total = totalChar
 }
