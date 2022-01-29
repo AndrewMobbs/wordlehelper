@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+// Filter object
+// yellow letters are recorded against which round they occur in and position
+// green letters are recorded just against position in word
+// grey letters are just a flat string
 type Filter struct {
 	yellow [][wordLength]rune
 	green  [wordLength]rune
@@ -21,6 +25,7 @@ func NewFilter() *Filter {
 	return &filter
 }
 
+//newYellow adds a new round to the yellow letter filter
 func (f *Filter) newYellow() {
 	f.yellow = append(f.yellow, [wordLength]rune{})
 	k := len(f.yellow)
@@ -29,6 +34,8 @@ func (f *Filter) newYellow() {
 	}
 }
 
+// processRound takes a single Wordle "round" input of word,result
+// and updates the Filter with the consequences of the result
 func (f *Filter) processRound(r string) error {
 	s := strings.Split(r, ",")
 	if len(s) != 2 || len(s[0]) != wordLength || len(s[1]) != wordLength {
@@ -67,6 +74,7 @@ func (f *Filter) processRound(r string) error {
 	return nil
 }
 
+// getFilter returns a Filter based on a set of rounds of Wordle results
 func getFilter(rounds []string) *Filter {
 	filter := NewFilter()
 	for _, v := range rounds {
@@ -78,6 +86,8 @@ func getFilter(rounds []string) *Filter {
 	return filter
 }
 
+// checkWord tests a word against current filter and returns a bool
+// indicating whether the word is valid or not, given the filter
 func (f *Filter) checkWord(word string) bool {
 	//Grey check -- must not have any known grey letters
 	if strings.ContainsAny(word, f.grey) {
@@ -108,6 +118,7 @@ func (f *Filter) checkWord(word string) bool {
 	return true
 }
 
+// yellowString returns the yellow letters for all rounds as a flat string
 func (f *Filter) yellowString() string {
 	yellowString := ""
 	for _, y := range f.yellow {
@@ -118,4 +129,14 @@ func (f *Filter) yellowString() string {
 		}
 	}
 	return yellowString
+}
+
+func (f *Filter) filterList(list []string) []string {
+	result := make([]string, 0, len(list))
+	for _, word := range list {
+		if f.checkWord(word) {
+			result = append(result, word)
+		}
+	}
+	return result
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"unicode"
 
@@ -76,14 +77,10 @@ func printHelp(name string) {
 	fmt.Printf("\nExample: %s words.txt arose,xxxgy chess,xxggg\n", name)
 }
 
-func main() {
-	if len(os.Args) == 1 {
-		printHelp(os.Args[0])
-		return
-	}
-	filename := os.Args[1]
+func doWordleHelper(args []string) {
+	filename := args[1]
 	if filename == "-h" || filename == "--help" {
-		printHelp(os.Args[0])
+		printHelp(args[0])
 		return
 
 	}
@@ -91,7 +88,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	filter := getFilter(os.Args[2:])
+	filter := getFilter(args[2:])
 	wordlist := scanFile(file, filter, wordLength)
 	f := NewFreqTable()
 	f.score(wordlist, filter)
@@ -102,5 +99,90 @@ func main() {
 		if i == topResults-1 {
 			break
 		}
+	}
+}
+
+func doWordleSolver(args []string) string {
+	solListFile, err := checkOpen(args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+	guessWordList, err := checkOpen(args[2])
+	if err != nil {
+		log.Fatal(err)
+	}
+	filter := getFilter(args[3:])
+	// Get all words on the guess list
+	guessList := scanFile(guessWordList, NewFilter(), wordLength)
+	// Filter the solution list
+	solList := scanFile(solListFile, filter, wordLength)
+	return getSolution(guessList, solList, filter)
+
+}
+
+func doSolverTest(args []string) {
+	solListFile, err := checkOpen(args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+	guessWordList, err := checkOpen(args[2])
+	if err != nil {
+		log.Fatal(err)
+	}
+	guessList := scanFile(guessWordList, NewFilter(), wordLength)
+	filter := NewFilter()
+	solList := scanFile(solListFile, filter, wordLength)
+	firstRoundCache := make(map[string]string)
+	for _, word := range solList {
+		roundSolList := solList
+		guess := args[3]
+		wordResult := word + ":"
+		result := ""
+		roundNum := 0
+		for len(roundSolList) > 1 && result != "ggggg" {
+			roundNum++
+			thisFilter := NewFilter()
+			thisFilter.green = filter.green
+			copy(thisFilter.yellow, filter.yellow)
+			thisFilter.grey = filter.grey
+
+			result = getRoundResult(guess, word)
+			roundResult := guess + "," + result
+			if guess != word {
+				wordResult += roundResult + ":"
+			}
+			thisFilter.processRound(roundResult)
+			roundSolList = thisFilter.filterList(roundSolList)
+			if v, ok := firstRoundCache[roundResult]; ok && roundNum == 1 {
+				guess = v
+			} else {
+				guess = getSolution(guessList, roundSolList, thisFilter)
+				firstRoundCache[roundResult] = guess
+			}
+		}
+		wordResult += guess + ",ggggg"
+		fmt.Printf("%s\n", wordResult)
+	}
+
+}
+
+func main() {
+	if len(os.Args) == 1 {
+		printHelp(os.Args[0])
+		return
+	}
+	switch filepath.Base(os.Args[0]) {
+	case "wordlehelper":
+		doWordleHelper(os.Args)
+	case "wordlesolver":
+		fmt.Printf("%s\n", doWordleSolver(os.Args))
+	case "solvertest":
+		if len(os.Args) != 4 {
+			fmt.Printf("Usage solvertest <solution list> <word list> <start word>")
+			os.Exit(1)
+		}
+		doSolverTest(os.Args)
+	default:
+		log.Fatal("Unknown program name: %s", os.Args[0])
 	}
 }
